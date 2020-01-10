@@ -1,4 +1,4 @@
-> ⚠️  Prometheus deployed by the folloing steps is ephemeral. I recommend to use Prometheus on k8s or Prometheus BOSH Release.
+> ⚠️  Prometheus deployed by the following steps is ephemeral. I recommend to use Prometheus on k8s or Prometheus BOSH Release instead for production.
 
 
 ```
