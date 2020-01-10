@@ -1,0 +1,35 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1beta1
+kind: Elasticsearch
+metadata:
+  name: platform-log
+  namespace: observability
+spec:
+  version: 7.5.1
+  http:
+    tls:
+      selfSignedCertificate:
+        subjectAltNames:
+        - dns: platform-log-es-default  
+  #   service:
+  #     spec:
+  #       type: NodePort
+  nodeSets:
+  - name: default
+    count: 1
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          env:
+          - name: ES_JAVA_OPTS
+            value: "-Xmx1g"
+          resources:
+            limits:
+              memory: 1.5Gi
+            requests:
+              memory: 1Gi
+    config:
+      node.master: true
+      node.data: true
+      node.ingest: true
+      node.store.allow_mmap: false

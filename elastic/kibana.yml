@@ -1,0 +1,29 @@
+apiVersion: kibana.k8s.elastic.co/v1beta1
+kind: Kibana
+metadata:
+  name: platform-log
+  namespace: observability
+spec:
+  version: 7.5.1
+  http:
+    service:
+      spec:
+        type: LoadBalancer
+    tls:
+      selfSignedCertificate:
+        subjectAltNames:
+        - dns: "*.dev.ik.am"
+        - dns: "*.pivotal.bosh.tokyo"   
+  count: 1
+  elasticsearchRef:
+    name: platform-log
+  config: {}
+  podTemplate:
+    spec:
+      containers:
+      - name: kibana
+        resources:
+          requests:
+            memory: 0.5Gi
+          limits:
+            memory: 0.7Gi

@@ -1,0 +1,83 @@
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: logstash
+  namespace: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: logstash  
+  template:
+    metadata:
+      labels:
+        app: logstash
+    spec:     
+      containers:
+      - name: logstash
+        ports:
+        - containerPort: 5514
+          name: syslog
+        image: docker.elastic.co/logstash/logstash:7.5.1
+        volumeMounts:
+        - name: logstash-pipeline
+          mountPath: /usr/share/logstash/pipeline
+        - name: es-http-ca
+          mountPath: /usr/share/logstash/es-http-ca
+        env:
+        - name: LS_JAVA_OPTS
+          value: -Dnetworkaddress.cache.ttl=1 -Xms512m -Xmx768m -Dfoo=15
+        - name: XPACK_MONITORING_ELASTICSEARCH_HOSTS
+          value: https://platform-log-es-default:9200
+        - name: XPACK_MONITORING_ELASTICSEARCH_USERNAME
+          value: elastic 
+        - name: XPACK_MONITORING_ELASTICSEARCH_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: platform-log-es-elastic-user
+              key: elastic
+        - name: XPACK_MONITORING_ELASTICSEARCH_SSL_CERTIFICATE_AUTHORITY
+          value: /usr/share/logstash/es-http-ca/tls.crt
+        readinessProbe:
+          tcpSocket:
+            port: 5514
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 5
+        livenessProbe:
+          tcpSocket:
+            port: 5514
+          initialDelaySeconds: 120
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            memory: 768Mi                 
+      volumes:
+      - name: logstash-pipeline
+        configMap:
+          name: logstash-pipeline
+      - name: es-http-ca
+        secret:
+          secretName: platform-log-es-http-ca-internal  
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: logstash
+  namespace: observability
+spec:
+  type: LoadBalancer
+  selector:
+    app: logstash
+  ports:
+  - protocol: TCP
+    port: 5514
+    targetPort: 5514
+    nodePort: 30514
+    name: logstash
