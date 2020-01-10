@@ -1,0 +1,20 @@
+apiVersion: 1
+providers:
+- name: BOSH
+  orgId: 1
+  folder: BOSH
+  type: file
+  disableDeletion: false
+  editable: true
+  allowUiUpdates: true
+  options:
+    path: /etc/grafana/provisioning/dashboards/BOSH
+- name: PAS
+  orgId: 1
+  folder: PAS
+  type: file
+  disableDeletion: false
+  editable: true
+  allowUiUpdates: true
+  options:
+    path: /etc/grafana/provisioning/dashboards/PAS

@@ -1,0 +1,16 @@
+scrape_configs:
+- job_name: metrics-agent
+  scrape_interval: 30s
+  scrape_timeout: 10s
+  metrics_path: /metrics
+  scheme: https
+  tls_config:
+    server_name: metrics_agent_metrics
+    ca_file: "/home/vcap/app/metrics_ca.crt"
+    cert_file: "/home/vcap/app/metrics.crt"
+    key_file: "/home/vcap/app/metrics.key"
+  dns_sd_configs:
+  - names:
+    - q-s4.*.*.cf*.bosh.
+    type: A
+    port: 14726

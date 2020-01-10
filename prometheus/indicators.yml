@@ -1,0 +1,1034 @@
+
+-
+iVersion: indicatorprotocol.io/v1
+nd: IndicatorDocument
+
+tadata:
+labels:
+  deployment: cf-db8fe24b0d9e5a85a77a
+  component: auctioneer
+
+ec:
+product:
+  name: diego
+  version: latest
+
+indicators:
+- name: auctioneer_lrp_auctions_failed
+  promql: rate(AuctioneerLRPAuctionsFailed{source_id="auctioneer"}[5m]) * 60
+  documentation:
+    title: Auctioneer - App Instance (AI) Placement Failures
+    description: |
+      The number of Long Running Process (LRP) instances that the auctioneer failed to place on Diego cells. This metric is cumulative over the lifetime of the auctioneer job.
+
+      Use: This metric can indicate that Diego is out of container space or that there is a lack of resources within your environment. This indicator also increases when the LRP is requesting an isolation segment, volume drivers, or a stack that is unavailable, either not deployed or lacking sufficient resources to accept the work.
+
+      This metric is emitted on event, and therefore gaps in receipt of this metric can be normal during periods of no app instances being scheduled.
+
+      This error is most common due to capacity issues, for example, if cells do not have enough resources, or if cells are going back and forth between a healthy and unhealthy state.
+
+      Origin: Firehose
+      Type: Counter (Integer)
+      Frequency: During each auction
+    recommended_response: |
+      1. To best determine the root cause, examine the Auctioneer logs. Depending on the specific error and resource constraint, you may also find a failure reason in the Cloud Controller (CC) API.
+      2. Investigate the health of your Diego cells to determine if they are the resource type causing the problem.
+      3. Consider scaling additional cells.
+
+- name: auctioneer_states_duration
+  promql: max_over_time(AuctioneerFetchStatesDuration{source_id="auctioneer"}[5m]) / 1000000000
+  documentation:
+    title: Auctioneer - Time to Fetch Cell State
+    description: |
+      Time in ns that the auctioneer took to fetch state from all the Diego cells when running its auction.
+
+      Use: Indicates how the cells themselves are performing. Alerting on this metric helps alert that app staging requests to Diego may be failing.
+
+      Origin: Firehose
+      Type: Gauge, integer in ns
+      Frequency: During event, during each auction
+    recommended_response: |
+      1. Check the health of the cells by reviewing the logs and looking for errors.
+      2. Review IaaS console metrics.
+      3. Inspect the Auctioneer logs to determine if one or more cells is taking significantly longer to fetch state than other cells. Relevant log lines will have wording like `fetched cell state`.
+
+- name: auctioneer_lrp_auctions_started
+  promql: rate(AuctioneerLRPAuctionsStarted{source_id="auctioneer"}[5m]) * 60
+  documentation:
+    title: Auctioneer - App Instance Starts
+    description: |
+      The number of LRP instances that the auctioneer successfully placed on Diego cells. This metric is cumulative over the lifetime of the auctioneer job.
+
+      Use: Provides a sense of running system activity levels in your environment. Can also give you a sense of how many app instances have been started over time. The provided measurement can help indicate a significant amount of container churn. However, for capacity planning purposes, it is more helpful to observe deltas over a long time window.
+
+      This metric is emitted on event, and therefore gaps in receipt of this metric can be normal during periods of no app instances being scheduled.
+
+      Origin: Firehose
+      Type: Counter (Integer)
+      Frequency: During event, during each auction
+    recommended_response: |
+      When observing a significant amount of container churn, do the following:
+
+      1. Look to eliminate explainable causes of temporary churn, such as a deployment or increased developer activity.
+      2. If container churn appears to continue over an extended period, inspect Diego Auctioneer and BBS logs.
+
+      When observing extended periods of high or low activity trends, scale up or down CF components as needed.
+
+- name: auctioneer_task_auctions_failed
+  promql: rate(AuctioneerTaskAuctionsFailed{source_id="auctioneer"}[5m]) * 60
+  documentation:
+    title: Auctioneer - Task Placement Failures
+    description: |
+      The number of Tasks that the auctioneer failed to place on Diego cells. This metric is cumulative over the lifetime of the auctioneer job.
+
+      Use: Failing Task auctions indicate a lack of resources within your environment and that you likely need to scale. This indicator also increases when the Task is requesting an isolation segment, volume drivers, or a stack that is unavailable, either not deployed or lacking sufficient resources to accept the work.
+
+      This metric is emitted on event, and therefore gaps in receipt of this metric can be normal during periods of no tasks being scheduled.
+
+      This error is most common due to capacity issues, for example, if cells do not have enough resources, or if cells are going back and forth between a healthy and unhealthy state.
+
+      Origin: Firehose
+      Type: Counter (Float)
+      Frequency: During event, during each auction
+    recommended_response: |
+      In order to best determine the root cause, examine the Auctioneer logs. Depending on the specific error or resource constraint, you may also find a failure reason in the CC API.
+
+      1. Investigate the health of Diego cells.
+      2. Consider scaling additional cells.
+
+- name: auctioneer_lock_held
+  promql: max_over_time(LockHeld{source_id="auctioneer"}[5m])
+  documentation:
+    title: Auctioneer - Lock Held
+    description: |
+      Whether an Auctioneer instance holds the expected Auctioneer lock (in Locket). 1 means the active Auctioneer holds the lock, and 0 means the lock was lost.
+
+      Use: This metric is complimentary to Active Locks, and it offers an Auctioneer-level version of the Locket metrics. Although it is emitted per Auctioneer instance, only 1 active lock is held by Auctioneer. Therefore, the expected value is 1. The metric may occasionally be 0 when the Auctioneer instances are performing a leader transition, but a prolonged value of 0 indicates an issue with Auctioneer.
+
+      Origin: Firehose
+      Type: Gauge
+      Frequency: Periodically
+    recommended_response: |
+      1. Run monit status on the instance group that the Auctioneer job is running on to check for failing processes.
+      2. If there are no failing processes, then review the logs for Auctioneer.
+         - Recent logs for Auctioneer should show all but one of its instances are currently waiting on locks, and the active Auctioneer should show a record of when it last attempted to execute work. This attempt should correspond to app development activity, such as cf push.Connection to 192.168.2.13 closed.
+
+
+
+---
+apiVersion: indicatorprotocol.io/v1
+kind: IndicatorDocument
+
+metadata:
+  labels:
+    deployment: cf-db8fe24b0d9e5a85a77a
+    component: rep
+
+spec:
+  product:
+    name: diego
+    version: latest
+
+  indicators:
+  - name: capacity_remaining_memory
+    promql: min_over_time(CapacityRemainingMemory{source_id="rep"}[5m]) / 1024
+    documentation:
+      title: Diego Cell - Remaining Memory Available - Overall Remaining Memory Available
+      description: |
+        Remaining amount of memory in MiB available for this Diego cell to allocate to containers.
+
+        Use: Can indicate low memory capacity overall in the platform. Low memory can prevent app scaling and new deployments. The overall sum of capacity can indicate that you need to scale the platform. Observing capacity consumption trends over time helps with capacity planning.
+
+        Origin: Firehose
+        Type: Gauge (Integer in MiB)
+        Frequency: 60 s
+      recommended_response: |
+        1. Assign more resources to the cells
+        2. Assign more cells.
+
+  - name: capacity_remaining_disk
+    promql: min_over_time(CapacityRemainingDisk{source_id="rep"}[5m]) / 1024
+    documentation:
+      title: Diego Cell - Remaining Disk Available - Overall Remaining Disk Available
+      description: |
+        Remaining amount of disk in MiB available for this Diego cell to allocate to containers.
+
+        Use: Low disk capacity can prevent app scaling and new deployments. Because Diego staging Tasks can fail without at least 6 GB free, the recommended red threshold is based on the minimum disk capacity across the deployment falling below 6 GB in the previous 5 minutes.
+
+        It can also be meaningful to assess how many chunks of free disk space are above a given threshold, similar to rep.CapacityRemainingMemory.
+
+        Origin: Firehose
+        Type: Gauge (Integer in MiB)
+        Frequency: 60 s
+      recommended_response: |
+        1. Assign more resources to the cells.
+        2. Assign more cells.
+
+  - name: garden_health_check_failed
+    promql: max_over_time(GardenHealthCheckFailed{source_id="rep"}[5m])
+    documentation:
+      title: Diego Cell - Garden Healthcheck Failed
+      description: |
+        The Diego cell periodically checks its health against the garden backend. For Diego cells, 0 means healthy, and 1 means unhealthy.
+
+        Use: Set an alert for further investigation if multiple unhealthy Diego cells are detected in the given time window. If one cell is impacted, it does not participate in auctions, but end-user impact is usually low. If multiple cells are impacted, this can indicate a larger problem with Diego, and should be considered a more critical investigation need.
+
+        Suggested alert threshold based on multiple unhealthy cells in the given time window.
+
+        Although end-user impact is usually low if only one cell is impacted, this should still be investigated. Particularly in a lower capacity environment, this situation could result in negative end-user impact if left unresolved.
+
+        Origin: Firehose
+        Type: Gauge (Float, 0-1)
+        Frequency: 30 s
+      recommended_response: |
+        1. Investigate Diego cell servers for faults and errors.
+        2. If a particular cell or cells appear problematic:
+           a. Determine a time interval during which the metrics from the cell changed from healthy to unhealthy.
+           b. Pull the logs that the cell generated over that interval. The Cell ID is the same as the BOSH instance ID.
+           c. Pull the BBS logs over that same time interval.
+        3. As a last resort, it sometimes helps to recreate the cell by running bosh recreate. See the BOSH documentation for bosh recreate command syntax.
+
+  - name: rep_bulk_sync_duration
+    promql: max_over_time(RepBulkSyncDuration{source_id="rep"}[15m]) / 1000000000
+    documentation:
+      title: Diego Cell - Time to Sync
+      description: |
+        Time in ns that the Diego Cell Rep took to sync the ActualLRPs that it claimed with its actual garden containers.
+
+        Use: Sync times that are too high can indicate issues with the BBS.
+
+        Origin: Firehose
+        Type: Gauge (Float in ns)
+        Frequency: 30 s
+      recommended_response: |
+        1. Investigate BBS logs for faults and errors.
+        2. If a particular cell or cells appear problematic, investigate logs for the cells.
+---
+apiVersion: indicatorprotocol.io/v1
+kind: IndicatorDocument
+
+metadata:
+  labels:
+    deployment: cf-db8fe24b0d9e5a85a77a
+    component: route_emitter
+
+spec:
+  product:
+    name: diego
+    version: latest
+
+  indicators:
+  - name: route_emitter_sync_duration
+    promql: max_over_time(RouteEmitterSyncDuration{source_id="route_emitter"}[15m]) / 1000000000
+    documentation:
+      title: Route Emitter - Sync Duration
+      description: |
+        Time in ns that the active Route Emitter took to perform its synchronization pass.
+
+        Use: Increases in this metric indicate that the Route Emitter may have trouble maintaining an accurate routing table to broadcast to the Gorouters. Tune alerting values to your deployment based on historical data and adjust based on observations over time. The suggested starting point is ≥ 5 for the yellow threshold and ≥ 10 for the critical threshold.
+
+        Origin: Firehose
+        Type: Gauge (Float in ns)
+        Frequency: 60s
+      recommended_response: |
+        If all or many jobs showing as impacted, there is likely an issue with Diego.
+        1. Investigate the Route Emitter and Diego BBS logs for errors.
+        2. Verify that app routes are functional by making a request to an app, pushing an app and pinging it, or if applicable, checking that your smoke tests have passed.
+        If one or a few jobs showing as impacted, there is likely a connectivity issue and the impacted job should be investigated further.
+
+
+---
+apiVersion: indicatorprotocol.io/v1
+kind: IndicatorDocument
+
+metadata:
+  labels:
+    deployment: cf-db8fe24b0d9e5a85a77a
+    component: bbs
+
+spec:
+  product:
+    name: diego
+    version: latest
+
+  indicators:
+  - name: convergence_lrp_duration
+    promql: max_over_time(ConvergenceLRPDuration{source_id="bbs"}[15m]) / 1000000000
+    documentation:
+      title: BBS - Time to Run LRP Convergence
+      description: |
+        Time in ns that the BBS took to run its LRP convergence pass.
+
+        Use: If the convergence run begins taking too long, apps or Tasks may be crashing without restarting. This symptom can also indicate loss of connectivity to the BBS database.
+
+        Origin: Firehose
+        Type: Gauge (Integer in ns)
+        Frequency: 30 s
+      recommended_response: |
+        1. Check BBS logs for errors.
+        2. Try vertically scaling the BBS VM resources up. For example, add more CPUs or memory depending on its system.cpu/system.memory metrics.
+        3. Consider vertically scaling the backing database, if system.cpu and system.memory metrics for the database instances are high.
+
+  - name: request_latency
+    promql: avg_over_time(RequestLatency{source_id="bbs"}[15m]) / 1000000000
+    documentation:
+      title: BBS - Time to Handle Requests
+      description: |
+        The maximum observed latency time over the past 60 seconds that the BBS took to handle requests across all its API endpoints.
+
+        Diego is now aggregating this metric to emit the max value observed over 60 seconds.
+
+        Use: If this metric rises, the BBS API is slowing. Response to certain operations is slow if request latency is high.
+
+        Origin: Firehose
+        Type: Gauge (Integer in ns)
+        Frequency: 60 s
+      recommended_response: |
+        1. Check CPU and memory statistics.
+        2. Check BBS logs for faults and errors that can indicate issues with BBS.
+        3. Try scaling the BBS VM resources up. For example, add more CPUs/memory depending on its system.cpu/system.memory metrics.
+        4. Consider vertically scaling the backing database, if system.cpu and system.memory metrics for the database instances are high.
+
+  - name: lrps_extra
+    promql: avg_over_time(LRPsExtra{source_id="bbs"}[5m])
+    documentation:
+      title: BBS - More App Instances Than Expected
+      description: |
+        Total number of LRP instances that are no longer desired but still have a BBS record. When Diego wants to add more apps, the BBS sends a request to the auctioneer to spin up additional LRPs. LRPsExtra is the total number of LRP instances that are no longer desired but still have a BBS record.
+
+        Use: If Diego has more LRPs running than expected, there may be problems with the BBS.
+
+        Deleting an app with many instances can temporarily spike this metric. However, a sustained spike in bbs.LRPsExtra is unusual and should be investigated.
+
+        Origin: Firehose
+        Type: Gauge (Float)
+        Frequency: 30 s
+      recommended_response: |
+        1. Review the BBS logs for proper operation or errors, looking for detailed error messages.
+        2. Check the Domain freshness.
+
+  - name: lrps_missing
+    promql: avg_over_time(LRPsMissing{source_id="bbs"}[5m])
+    documentation:
+      title: BBS - Fewer App Instances Than Expected
+      description: |
+        Total number of LRP instances that are desired but have no record in the BBS. When Diego wants to add more apps, the BBS sends a request to the auctioneer to spin up additional LRPs. LRPsMissing is the total number of LRP instances that are desired but have no BBS record.
+
+        Use: If Diego has less LRP running than expected, there may be problems with the BBS.
+
+        An app push with many instances can temporarily spike this metric. However, a sustained spike in bbs.LRPsMissing is unusual and should be investigated.
+
+        Origin: Firehose
+        Type: Gauge (Float)
+        Frequency: 30 s
+      recommended_response: |
+        1. Review the BBS logs for proper operation or errors, looking for detailed error messages.
+        2. Check the Domain freshness.
+
+  - name: crashed_actual_lrps
+    promql: avg_over_time(CrashedActualLRPs{source_id="bbs"}[5m])
+    documentation:
+      title: BBS - Crashed App Instances
+      description: |
+        Total number of LRP instances that have crashed.
+
+        Use: Indicates how many instances in the deployment are in a crashed state. An increase in bbs.CrashedActualLRPs can indicate several problems, from a bad app with many instances associated, to a platform issue that is resulting in app crashes. Use this metric to help create a baseline for your deployment. After you have a baseline, you can create a deployment-specific alert to notify of a spike in crashes above the trend line. Tune alert values to your deployment.
+
+        Origin: Firehose
+        Type: Gauge (Float)
+        Frequency: 30 s
+      recommended_response: |
+        1. Look at the BBS logs for apps that are crashing and at the cell logs to see if the problem is with the apps themselves, rather than a platform issue.
+
+  - name: lrps_running
+    promql: avg_over_time(LRPsRunning{source_id="bbs"}[1h]) - avg_over_time(LRPsRunning{source_id="bbs"}[1h]  offset 1h)
+    documentation:
+      title: BBS - Running App Instances, Rate of Change
+      description: |
+        Rate of change in app instances being started or stopped on the platform. It is derived from bbs.LRPsRunning and represents the total number of LRP instances that are running on Diego cells.
+
+        Use: Delta reflects upward or downward trend for app instances started or stopped. Helps to provide a picture of the overall growth trend of the environment for capacity planning. You may want to alert on delta values outside of the expected range.
+
+        Origin: Firehose
+        Type: Gauge (Float)
+        Frequency: During event, emission should be constant on a running deployment.
+      recommended_response: |
+        1. Scale components as necessary.
+
+  - name: bbs_lock_held
+    promql: max_over_time(LockHeld{source_id="bbs"}[5m])
+    documentation:
+      title: BBS - Lock Held
+      description: |
+        Whether a BBS instance holds the expected BBS lock (in Locket). 1 means the active BBS server holds the lock, and 0 means the lock was lost.
+
+        Use: This metric is complimentary to Active Locks, and it offers a BBS-level version of the Locket metrics. Although it is emitted per BBS instance, only 1 active lock is held by BBS. Therefore, the expected value is 1. The metric may occasionally be 0 when the BBS instances are performing a leader transition, but a prolonged value of 0 indicates an issue with BBS.
+
+        Origin: Firehose
+        Type: Gauge
+        Frequency: Periodically
+      recommended_response: |
+        1. Run monit status on the instance group that the BBS job is running on to check for failing processes.
+        2. If there are no failing processes, then review the logs for BBS.
+           - A healthy BBS shows obvious activity around starting or claiming LRPs.
+           - An unhealthy BBS leads to the Auctioneer showing minimal or no activity. The BBS sends work to the Auctioneer.
+
+  - name: domain_cf_apps
+    promql: max_over_time(Domain_cf_apps{source_id="bbs"}[5m])
+    documentation:
+      title: BBS - Cloud Controller and Diego in Sync
+      description: |
+        Indicates if the cf-apps Domain is up-to-date, meaning that CF App requests from Cloud Controller are synchronized to bbs.LRPsDesired (Diego-desired AIs) for execution.
+        - 1 means cf-apps Domain is up-to-date
+        - No data received means cf-apps Domain is not up-to-date
+
+        Use: If the cf-apps Domain does not stay up-to-date, changes requested in the Cloud Controller are not guaranteed to propagate throughout the system. If the Cloud Controller and Diego are out of sync, then apps running could vary from those desired.
+
+        Origin: Firehose
+        Type: Gauge (Float)
+        Frequency: 30 s
+      recommended_response: |
+        1. Check the BBS and Clock Global (Cloud Controller clock) logs.
+---
+apiVersion: indicatorprotocol.io/v1
+kind: IndicatorDocument
+
+metadata:
+  labels:
+    deployment: cf-db8fe24b0d9e5a85a77a
+    component: locket
+
+spec:
+  product:
+    name: diego
+    version: latest
+
+  indicators:
+  - name: locket_active_locks
+    promql: max_over_time(ActiveLocks{source_id="locket"}[5m])
+    documentation:
+      title: Locket - Active Locks
+      description: |
+        Total count of how many locks the system components are holding.
+
+        Use: If the ActiveLocks count is not equal to the expected value, there is likely a problem with Diego.
+
+        Origin: Firehose
+        Type: Gauge
+        Frequency: 60s
+      recommended_response: |
+        1. Run monit status to inspect for failing processes.
+        2. If there are no failing processes, then review the logs for the components using the Locket service: BBS, Auctioneer, TPS Watcher, Routing API, and Clock Global (Cloud Controller clock). Look for indications that only one of each component is active at a time.
+        3. Focus triage on the BBS first:
+          A healthy BBS shows obvious activity around starting or claiming LRPs.
+          An unhealthy BBS leads to the Auctioneer showing minimal or no activity. The BBS sends work to the Auctioneer.
+          Reference the BBS-level Locket metric Locks Held by BBS. A value of 0 indicates Locket issues at the BBS level.
+        4. If the BBS appears healthy, then check the Auctioneer to ensure it is processing auction payloads.
+          Recent logs for Auctioneer should show all but one of its instances are currently waiting on locks, and the active Auctioneer should show a record of when it last attempted to execute work. This attempt should correspond to app development activity, such as cf push.
+          Reference the Auctioneer-level Locket metric Locks Held by Auctioneer. A value of 0 indicates Locket issues at the Auctioneer level.
+        5. The TPS Watcher is primarily active when app instances crash. Therefore, if the TPS Watcher is suspected, review the most recent logs.
+
+  - name: locket_active_presences
+    promql: max_over_time(ActivePresences{source_id="locket"}[15m])
+    documentation:
+      title: Locket - Active Presences
+      description: |
+        Total count of active presences. Presences are defined as the registration records that the cells maintain to advertise themselves to the platform.
+
+        Use: If the Active Presences count is far from the expected, there might be a problem with Diego.
+
+        The number of active presences varies according to the number of cells deployed. Therefore, during purposeful scale adjustments, this alerting threshold should be adjusted.
+        Establish an initial threshold by observing the historical trends for the deployment over a brief period of time, Increase the threshold as more cells are deployed. During a rolling deploy, this metric shows variance during the BOSH lifecycle when cells are evacuated and restarted. Tolerable variance is within the bounds of the BOSH max inflight range for the instance group.
+
+        Origin: Firehose
+        Type: Gauge
+        Frequency: 60s
+      recommended_response: |
+        1. Ensure that the variance is not the result of an active rolling deploy. Also ensure that the alert threshold is appropriate to the number of cells in the current deployment.
+        2. Run monit status to inspect for failing processes.
+        3. If there are no failing processes, then review the logs for the components using the Locket service itself on Diego BBS instances.
+
+---
+apiVersion: indicatorprotocol.io/v1
+kind: IndicatorDocument
+
+metadata:
+  labels:
+    deployment: cf-db8fe24b0d9e5a85a77a
+    component: doppler
+
+spec:
+  product:
+    name: loggregator
+    version: latest
+
+  indicators:
+  - name: log_loss_rate_ksi
+    promql: 100*sum(rate(dropped{source_id="doppler",direction="ingress"}[5m])) by (index) / sum(rate(ingress{source_id="doppler"}[5m])) by (index)
+    thresholds:
+    - level: warning
+      operator: gte
+      value: 0.5
+    - level: critical
+      operator: gte
+      value: 1
+    documentation:
+      title: Log Transport Loss Rate
+      description: |
+        Excessive dropped messages can indicate the Dopplers and/or Traffic
+        Controllers are not processing messages fast enough.
+
+        The recommended scaling indicator is to look at the total dropped as a
+        percentage of the total throughput and scale if the derived loss rate
+        value grows greater than `0.01`.
+    recommended_response: |
+      Scale up the number of `log-api` and `doppler` instances.
+
+      **Note:** At approximately 40 `doppler` instances and 20 `log-api` instances,
+      horizontal scaling is no longer useful for improving Firehose performance.
+      To improve performance, add vertical scale to the existing `doppler` and
+      `log-api` instances by increasing CPU resources.
+
+  - name: doppler_message_rate_ksi
+    promql: rate(ingress{source_id="doppler"}[5m])
+    thresholds:
+    - level: warning
+      operator: gte
+      value: 16000
+    documentation:
+      title: Doppler Message Rate Capacity
+      description: |
+        The recommended scaling indicator is to look at the average load on the
+        Doppler instances, and increase the number of Doppler instances when the
+        derived rate is 16,000 envelopes per second, or 1 million envelopes per
+        minute.
+    recommended_response: |
+      Increase the number of `doppler` instances.
+
+  - name: rlp_loss_ksi
+    promql: 100*sum(rate(dropped{source_id="reverse_log_proxy"}[5m])) by (index) / sum(rate(ingress{source_id="reverse_log_proxy"}[5m])) by (index)
+    thresholds:
+    - level: warning
+      operator: gte
+      value: 1
+    - level: critical
+      operator: gte
+      value: 10
+    documentation:
+      title: Reverse Log Proxy Loss Rate
+      description: |
+        Excessive dropped messages can indicate that the RLP is overloaded and
+        that the Traffic Controllers need to be scaled.
+
+        The recommended scaling indicator is to look at the maximum per minute
+        loss rate over a 5-minute window and scale if the derived loss rate
+        value grows greater than `0.1`.
+    recommended_response: |
+      Scale up the number of log-api instances to further balance log load.
+
+  layout:
+    owner: Loggregator Team
+    title: Loggregator
+    description: |
+       This topic explains how to monitor the health of Cloud Foundry
+       Loggregator using the metrics and key performance indicators (KPIs)
+       generated by the service.
+    sections:
+    - title: Key Performance Indicators for Loggregator
+      description: This section describes the KPIs that you can use to monitor the health of Loggregator.
+      indicators:
+      - log_loss_rate_ksi
+      - doppler_message_rate_ksi
+      - rlp_loss_ksi
+---
+apiVersion: indicatorprotocol.io/v1
+kind: IndicatorDocument
+
+metadata:
+  labels:
+    deployment: cf-db8fe24b0d9e5a85a77a
+    component: log-cache
+    source_id: infra_doppler
+
+spec:
+  product:
+    name: log-cache
+    version: "2.2.0"
+
+  indicators:
+  - name: log_cache_duration
+    promql: min(log_cache_cache_period{source_id="$source_id",deployment="$deployment"})
+    thresholds:
+    - level: warning
+      operator: lte
+      value: 30000
+    documentation:
+      title: Log Cache Duration Monitor
+      measurement: The time difference between the oldest and newest node on Log Cache.
+      description: The shortest cache duration of all the Log Cache nodes.
+      recommended_response: |
+        Check if all of your Log Cache processes are healthy.
+        If you recently rolled your doppler VMs, the cache duration has reset and
+        this warning can be ignored.
+
+  layout:
+    owner: Log Cache Team
+    title: Log Cache Monitors
+    description: Monitoring Log Cache
+    sections:
+    - title: Log Cache Duration
+      description: The time difference between the oldest and newest node on Log Cache.
+      indicators:
+      - log_cache_duration
+
+---
+apiVersion: indicatorprotocol.io/v1
+kind: IndicatorDocument
+
+metadata:
+  labels:
+    deployment: cf-db8fe24b0d9e5a85a77a
+    source_id: p-mysql
+    origin: mysql
+
+spec:
+  product:
+    name: mysql-pxc
+    version: v2.5
+
+  indicators:
+  - name: mysql_availability
+    promql:  _$origin_available{source_id="$source_id", deployment="$deployment"}
+    thresholds:
+    - level: critical
+      operator: lt
+      value: 1
+    alert:
+      for: 5m
+    documentation:
+      title: MySQL Server Availability
+      description: A boolean value that indicates whether the MySQL process is running or not.
+      recommendedResponse: Run mysql-diag and check the MySQL Server logs for errors.
+  - name: percentage_of_available_connections_used
+    promql:  (_$origin_performance_threads_connected{source_id="$source_id", deployment="$deployment"} / _$origin_variables_max_connections{source_id="$source_id", deployment="$deployment"}) * 100
+    thresholds:
+      - level: critical
+        operator: gt
+        value: 90
+      - level: warning
+        operator: gt
+        value: 80
+    alert:
+      for: 1m
+    documentation:
+      title: Percentage of Available Connections Used
+      description: "Percentage of available connections used"
+      recommendedResponse: "Run mysql-diag and check the MySQL Server logs for errors. When approaching 100% of max connections, Apps may be experiencing times when they cannot connect to the database. If this threshold is met or exceeded for an extended period of time, monitor app usage to ensure everything is behaving as expected."
+  - name: mysql_performance_cpu_utilization_percent
+    promql:  _$origin_performance_cpu_utilization_percent{source_id="$source_id", deployment="$deployment"}
+    thresholds:
+      - level: critical
+        operator: gt
+        value: 90
+      - level: warning
+        operator: gt
+        value: 80
+    alert:
+      for: 10m
+    documentation:
+      title: CPU Utilization Percent
+      description: "CPU utilization on the MySQL node."
+      recommendedResponse: "Run mysql-diag and check the MySQL Server logs for errors. Determine what is using so much CPU. If it is from normal processes, update the service instance to use a plan with larger CPU capacity."
+  - name: mysql_performance_queries_delta
+    promql:  _$origin_performance_queries_delta{source_id="$source_id", deployment="$deployment"}
+    thresholds:
+      - level: critical
+        operator: eq
+        value: 0
+    alert:
+      for: 2m
+    documentation:
+      title: Queries Delta
+      description: "The number of statements executed by the server over the last 30 seconds."
+      recommendedResponse: "Run mysql-diag and check the MySQL Server logs for errors. Investigate the MySQL server logs, such as the audit log, to understand why query rate changed and determine appropriate action."
+  
+  - name: mysql_galera_wsrep_ready
+    promql:  _$origin_galera_wsrep_ready{source_id="$source_id", deployment="$deployment"}
+    thresholds:
+    - level: critical
+      operator: eq
+      value: 0
+    - level: warning
+      operator: lt
+      value: 1
+    alert:
+      for: 5m
+    documentation:
+      title: Galera Cluster Node Readiness
+      description: "Shows whether each cluster node can accept queries. Returns only 0 or 1. When this metric is 0, almost all queries to that node fail with the error: ERROR 1047 (08501) Unknown Command"
+      recommendedResponse: |
+        Run mysql-diag and check the MySQL Server logs for errors.
+        Make sure there has been no infrastructure event that affects intra-cluster communication.
+        Ensure that `wsrep_ready` has not been set to off by using the query: `SHOW STATUS LIKE 'wsrep_ready';`
+  - name: mysql_galera_cluster_size
+    promql:  _$origin_galera_wsrep_cluster_size{source_id="$source_id", deployment="$deployment"}
+    thresholds:
+    
+      - level: critical
+        operator: lt
+        value: 1
+    
+    alert:
+      for: 5m
+    documentation:
+      title: Galera Cluster Size
+      description: "The number of cluster nodes with which each node is communicating normally. Use: When running in a multi-node configuration, this metric indicates if each member of the cluster is communicating normally with all other nodes."
+      recommendedResponse: "Run mysql-diag and check the MySQL Server logs for errors."
+    
+
+---
+apiVersion: indicatorprotocol.io/v1
+kind: IndicatorDocument
+metadata:
+  labels:
+    deployment: cf-db8fe24b0d9e5a85a77a
+
+spec:
+  product:
+    name: gorouter
+    version: NA
+
+  indicators:
+    - name: throughput_by_router
+      promql: rate(total_requests{source_id="gorouter",deployment="$deployment"}[1m])*60
+      thresholds: # Dynamic
+        - level: critical
+          operator: gte
+          value: 125000
+        - level: warning
+          operator: gte
+          value: 100000
+      presentation:
+        labels: [deployment, index, ip, job]
+      documentation:
+        title: Throughput by Router
+        description: |
+          The lifetime number of requests completed by the Gorouter VM, emitted per Gorouter instance
+
+          **Use**: The aggregation of these values across all Gorouters provide insight into the overall traffic flow of
+          a deployment. Unusually high spikes, if not known to be associated with an expected increase in demand, could
+          indicate a DDoS risk. For performance and capacity management, consider this metric a measure of router
+          throughput per job, converting it to requests-per-second, by looking at the delta value of
+          `gorouter.total_requests` and deriving back to 1s, or `(gorouter.total_requests.delta)/5`, per Gorouter instance.
+           This helps you see trends in the throughput rate that indicate a need to scale the Gorouter instances. Use the
+           trends you observe to tune the threshold alerts for this metric.
+
+          **Origin**: Firehose
+          **Type**: Counter (Integer)
+          **Frequency**: 5s
+        recommendedMeasurement: |
+          Average over the last 5 minutes of the derived per second calculation
+        recommendedResponse: |
+          For optimizing the Gorouter, consider the requests-per-second derived metric in the context of router latency
+          and Gorouter VM CPU utilization. From performance and load testing of the Gorouter, it's observed that
+          at approximately 2500 requests per second, latency can begin to increase.
+
+          To increase throughput and maintain low latency, scale the Gorouters either horizontally or vertically and
+          watch that the system.cpu.user metric for the Gorouter stays in the suggested range of 60-70% CPU Utilization.
+
+    - name: latency_by_router
+      promql: quantile_over_time(0.95, latency{source_id="gorouter",deployment="$deployment"}[1m])
+      thresholds: # Dynamic
+        - level: critical
+          operator: gte
+          value: 150
+        - level: warning
+          operator: gte
+          value: 100
+      presentation:
+        labels: [deployment, index, ip, job]
+      documentation:
+        title: Latency by Router
+        description: |
+          The time in milliseconds that the Gorouter takes to handle requests to backend endpoints, which include both
+          applications routable platform system APIs like Cloud Controller and UAA. This is the average round trip
+          response time, which includes router handling.
+
+          **Use**: Indicates how Gorouter jobs in PAS are impacting overall responsiveness. Latencies above 100 ms can
+          indicate problems with the network, misbehaving backends, or the need to scale the Gorouter itself due to
+          ongoing traffic congestion. An alert value on this metric should be tuned to the specifics of the deployment
+          and its underlying network considerations; a suggested starting point is 100 ms.
+
+          **Origin**: Firehose
+          **Type**: Gauge (Float in ms)
+          **Frequency**: Emitted per Gorouter request, emission should be constant on a running deployment
+        recommendedMeasurement: |
+          Average over the last 30 minutes
+        recommendedResponse: |
+          Extended periods of high latency can point to several factors. The Gorouter latency measure includes network
+          and backend latency impacts as well.
+
+          1. First inspect logs for network issues and indications of misbehaving backends.
+          2. If it appears that the Gorouter needs to scale due to ongoing traffic congestion, do not scale on the
+             latency metric alone. You should also look at the CPU utilization of the Gorouter VMs and keep it within a
+             maximum 60-70% range.
+          3. Resolve high utilization by scaling the Gorouter.
+
+    - name: bad_gateways_by_router
+      promql: rate(bad_gateways{source_id="gorouter",deployment="$deployment"}[1m])*60
+      thresholds: # Dynamic
+        - level: critical
+          operator: gte
+          value: 40
+        - level: warning
+          operator: gte
+          value: 30
+      presentation:
+        labels: [deployment, index, ip, job]
+      documentation:
+        title: 502 Bad Gateways by Router
+        description: |
+          The lifetime number of bad gateways, or 502 responses, from the Gorouter itself, emitted per Gorouter instance.
+          The Gorouter emits a 502 bad gateway error when it has a route in the routing table and, in attempting to make
+          a connection to the backend, finds that the backend does not exist.
+
+          **Use**: Indicates that route tables might be stale. Stale routing tables suggest an issue in the route
+          register management plane, which indicates that something has likely changed with the locations of the
+          containers. Always investigate unexpected increases in this metric.
+
+          **Origin**: Firehose
+          **Type**: Count (Integer, Lifetime)
+          **Frequency**: 5 s
+        recommendedMeasurement: |
+          Maximum delta per minute over a 5-minute window
+        recommendedResponse: |
+          Extended periods of high latency can point to several factors. The Gorouter latency measure includes network
+          and backend latency impacts as well.
+
+          1. Check the Gorouter and Route Emitter logs to see if they are experiencing issues when connecting to NATS.
+          1. Check the BOSH logs to see if the NATS, Gorouter, or Route Emitter VMs are failing.
+          1. Look broadly at the health of all VMs, particularly Diego-related VMs.
+
+    - name: responses_5xx_by_router
+      promql: rate(responses_5xx{source_id="gorouter",deployment="$deployment"}[1m])*60
+      thresholds: # Dynamic
+        - level: critical
+          operator: gte
+          value: 40
+        - level: warning
+          operator: gte
+          value: 30
+      presentation:
+        labels: [deployment, index, ip, job]
+      documentation:
+        title: All 5XX Errors by Router
+        description: |
+          The lifetime number of requests completed by the Gorouter VM for HTTP status family 5xx, server errors, emitted
+          per Gorouter instance.
+
+          **Use**: A repeatedly crashing app is often the cause of a big increase in 5xx responses. However, response
+          issues from apps can also cause an increase in 5xx responses. Always investigate an unexpected increase in this
+          metric.
+
+          **Origin**: Firehose
+          **Type**: Counter (Integer)
+          **Frequency**: 5 s
+        recommendedMeasurement: |
+          Maximum delta per minute over a 5-minute window
+        recommendedResponse: |
+          Extended periods of high latency can point to several factors. The Gorouter latency measure includes network
+          and backend latency impacts as well.
+
+          1. Look for out-of-memory errors and other app-level errors.
+          1. As a temporary measure, ensure that the troublesome app is scaled to more than one instance.
+
+    - name: number_of_routes_registered_by_router
+      promql: total_routes{source_id="gorouter",deployment="$deployment"}
+      thresholds: # Dynamic
+        - level: critical
+          operator: gte
+          value: 200
+        - level: warning
+          operator: gte
+          value: 100
+      presentation:
+        labels: [deployment, index, ip, job]
+      documentation:
+        title: Number of Routes Registered by Router
+        description: |
+          The current total number of routes registered with the Gorouter, emitted per Gorouter instance
+
+          **Use**: The aggregation of these values across all Gorouters indicates uptake and gives a picture of the overall growth of the environment for capacity planning.
+
+          It's also recommended alerting on this metric if the number of routes falls outside of the normal range for your deployment. Dramatic decreases in this metric volume may indicate a problem with the route registration process, such as an app outage, or that something in the route register management plane has failed.
+
+          If visualizing these metrics on a dashboard, `gorouter.total_routes` can be helpful for visualizing dramatic drops. However, for alerting purposes, the `gorouter.ms_since_last_registry_update metric` is more valuable for quicker identification of Gorouter issues. Alerting thresholds for `gorouter.total_routes` should focus on dramatic increases or decreases out of expected range.
+
+          **Origin**: Firehose
+          **Type**: Gauge (Float)
+          **Frequency**: 30 s
+        recommendedMeasurement: |
+          5-minute average of the per second delta
+        recommendedResponse: |
+          1. For capacity needs, scale up or down the Gorouter VMs as necessary.
+          1. For significant drops in current total routes, see the [`gorouter.ms_since_last_registry_update`](https://docs.pivotal.io/pivotalcf/2-4/monitoring/kpi.html#mssincelastregistryupdate) metric value for additional context.
+          1. Check the Gorouter and Route Emitter logs to see if they are experiencing issues when connecting to NATS.
+          1. Check the BOSH logs to see if the NATS, Gorouter, or Route Emitter VMs are failing.
+          1. Look broadly at the health of all VMs, particularly Diego-related VMs.
+
+    - name: router_file_descriptors_by_router
+      promql: file_descriptors{source_id="gorouter",deployment="$deployment"}
+      thresholds:
+        - level: critical
+          operator: gte
+          value: 60000
+        - level: warning
+          operator: gte
+          value: 50000
+      presentation:
+        labels: [deployment, index, ip, job]
+      documentation:
+        title: Router File Descriptors By Router
+        description: |
+          The number of file descriptors currently used by the Gorouter job.
+
+          **Use**: Indicates an impending issue with the Gorouter. Without proper mitigation, it is possible for an unresponsive app to eventually exhaust available Gorouter file descriptors and cause route starvation for other apps running on PAS. Under heavy load, this unmitigated situation can also result in the Gorouter losing its connection to NATS and all routes being pruned.
+
+          While a drop in `gorouter.total_routes` or an increase in `gorouter.ms_since_last_registry_update` helps to surface that the issue may already be occurring, alerting on `gorouter.file_descriptors` indicates that such an issue is impending.
+
+          The Gorouter limits the number of file descriptors to 100,000 per job. Once the limit is met, the Gorouter is unable to establish any new connections.
+
+          To reduce the risk of DDoS attacks, we recommend doing one or both of the following:
+
+          * Within PAS, set **Max Connections Per Backend** to define how many requests can be routed to any particular app instance. This prevents a single app from using all Gorouter connections. The value specified should be determined by the operator based on the use cases for that foundation.
+          * Add rate limiting at the load balancer level.
+
+          **Origin**: Firehose
+          **Type**: Gauge
+          **Frequency**: 5 s
+        recommendedMeasurement: |
+          Maximum, per Gorouter job, over the last 5 minutes
+        recommendedResponse: |
+          1. Identify which app(s) are requesting excessive connections and resolve the impacting issues with these apps.
+          1. If the above recommended mitigation steps have not already been taken, do so.
+          1. Consider adding more Gorouter VM resources to increase the number of available file descriptors.
+
+    - name: router_exhausted_connections_by_router
+      promql: rate(backend_exhausted_conns{source_id="gorouter", deployment="$deployment"}[1m])*60
+      thresholds: # dynamic
+        - level: critical
+          operator: gte
+          value: 10
+        - level: warning
+          operator: gte
+          value: 5
+      presentation:
+        labels: [deployment, index, ip, job]
+      documentation:
+        title: Router Exhausted Connections By Router
+        description: |
+          The lifetime number of requests that have been rejected by the Gorouter VM due to the `Max Connections Per Backend` limit being reached across all tried backends. The limit controls the number of concurrent TCP connections to any particular app instance and is configured within PAS.
+
+          **Use**: Indicates that PAS is mitigating risk to other applications by self-protecting the platform against one or more unresponsive applications. Increases in this metric indicate the need to investigate and resolve issues with potentially unresponsive applications. A rapid rate of change upward is concerning and should be assessed further.
+
+          **Origin**: Firehose
+          **Type**: Counter (Integer)
+          **Frequency**: 5 s
+        recommendedMeasurement: |
+          Maximum delta per minute, per Gorouter job, over a 5-minute window
+        recommendedResponse: |
+          1. If `gorouter.backend_exhausted_conns` spikes, first look to the Router Throughput metric `gorouter.total_requests` to determine if this measure is high or low in relation to normal bounds for this deployment.
+          1. If Router Throughput appears within normal bounds, it is likely that `gorouter.backend_exhausted_conns` is spiking due to an unresponsive application, possibly due to application code issues or underlying application dependency issues. To help determine the problematic application, look in access logs for repeated calls to one application. Then proceed to troubleshoot this application accordingly.
+          1. If Router Throughput also shows unusual spikes, the cause of the increase in `gorouter.backend_exhausted_conns` spikes is likely external to the platform. Unusual increases in load may be due to expected business events driving additional traffic to applications. Unexpected increases in load may indicate a DDoS attack risk.
+
+    - name: time_since_last_route_registered_by_router
+      promql: max_over_time(ms_since_last_registry_update{source_id="gorouter",deployment="$deployment"}[1m])/1000
+      thresholds:
+        - level: critical
+          operator: gte
+          value: 30000
+      presentation:
+        labels: [deployment, index, ip, job]
+      documentation:
+        title: Time Since Last Route Registered by Router
+        description: |
+          Time in milliseconds since the last route register was received, emitted per Gorouter instance
+
+          **Use**: Indicates if routes are not being registered to apps correctly.
+
+          **Origin**: Firehose
+          **Type**: Gauge (Float in ms)
+          **Frequency**: 30 s
+        recommendedMeasurement: |
+          Maximum over the last 5 minutes
+        recommendedResponse: |
+          1. Search the Gorouter and Route Emitter logs for connection issues to NATS.
+          1. Check the BOSH logs to see if the NATS, Gorouter, or Route Emitter VMs are failing.
+          1. Look more broadly at the health of all VMs, particularly Diego-related VMs.
+    - name: number_of_route_registration_messages_sent_and_received
+      promql: scalar(sum(rate(HTTPRouteNATSMessagesEmitted{source_id="route_emitter", deployment="$deployment"}[2m] offset 1m)) * 60) - rate(registry_message_route_emitter{source_id="gorouter",deployment="$deployment"}[2m]) * 60
+      thresholds: # dynamic
+        - level: warning
+          operator: gte
+          value: 30
+          alert:
+            step: 10m
+            for: 5m
+        - level: critical
+          operator: gte
+          value: 50
+          alert:
+            step: 10m
+            for: 5m
+      presentation:
+        labels: [deployment, index, ip, job]
+        frequency: 300
+      documentation:
+        title: Number of Route Registration Messages Sent and Received
+        description: |
+          This KPI is based on the following metrics:
+
+          * `route_emitter.HTTPRouteNATSMessagesEmitted` reports the lifetime number of route registration messages sent by the Route Emitter component. The metric is emitted for each Route Emitter.
+          * `gorouter.registry_message.route-emitter` reports the lifetime number of route registration messages received by the Gorouter. The metric is emitted for each Gorouter instance.
+
+          Dynamic configuration that enables the Gorouter to route HTTP requests to apps is published by the Route Emitter component colocated on each Diego cell to the NATS clustered message bus. All router instances subscribed to this message bus receive the same configuration. (Router instances within an isolation segment receive configuration only for cells in the same isolation segment.)
+
+          As Gorouters prune app instances from the route when a TTL expires, each Route Emitter periodically publishes the routing configuration for the app instances on the same cell.
+
+          Therefore, the aggregate number of route registration messages published by all the Route Emitters should be equal to the number of messages received by each Gorouter instance.
+
+          **Use**: A difference in the rate of change of these metrics is an indication of an issue in the control plane responsible for updating the routers with changes to the routing table.
+
+          It's recommended alerting when the number of messages received per second for a given router instance falls below the sum of messages emitted per second across all Route Emitters.
+
+          If visualizing these metrics on a dashboard, look for increases in the difference between the rate of messages received and sent. If the number of messages received by a Gorouter instance drops below the sum of messages sent by the Route Emitters, this is an indication of a problem in the control plane.
+
+          **Origin**: Firehose
+          **Type**: Counter
+          **Frequency**: With each event
+        recommendedMeasurement: |
+          Difference of 5-minute average of the per second deltas for `gorouter.registry_message.route-emitter` and sum of `route_emitter.HTTPRouteNATSMessagesEmitted` for all Route Emitters
+        recommendedResponse: |
+          1. Check the Gorouter and Route Emitter logs to see if they are experiencing issues when connecting to NATS.
+          1. Check the BOSH logs to see if the NATS, Gorouter, or Route Emitter VMs are failing.
+          1. Look broadly at the health of all VMs, particularly Diego-related VMs.
+
+  layout:
+    title: Routing
+    sections:
+      - title: Requests (Isolated)
+        indicators:
+          - throughput_by_router
+          - latency_by_router
+      - title: Errors (Isolated)
+        indicators:
+          - bad_gateways_by_router
+          - responses_5xx_by_router
+      - title: Router Health (Isolated)
+        indicators:
+          - number_of_routes_registered_by_router
+          - router_file_descriptors_by_router
+          - router_exhausted_connections_by_router
+          - time_since_last_route_registered_by_router
+          - number_of_route_registration_messages_sent_and_received
+
