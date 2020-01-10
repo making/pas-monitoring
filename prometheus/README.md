@@ -1,3 +1,6 @@
+> ⚠️  Prometheus deployed by the folloing steps is ephemeral. I recommend to use Prometheus on k8s or Prometheus BOSH Release.
+
+
 ```
 PROMETHEUS_VERSION=2.15.1
 if [ ! -d prometheus-${PROMETHEUS_VERSION}.linux-amd64 ];then
