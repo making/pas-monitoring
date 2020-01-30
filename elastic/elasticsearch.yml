@@ -28,6 +28,16 @@ spec:
               memory: 1.5Gi
             requests:
               memory: 1Gi
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 100Gi
+        #storageClassName: default
     config:
       node.master: true
       node.data: true
