@@ -19,15 +19,20 @@ spec:
         ports:
         - containerPort: 5514
           name: syslog
-        image: docker.elastic.co/logstash/logstash:7.5.1
+        image: making/logstash-datadog:7.5.1
         volumeMounts:
         - name: logstash-pipeline
           mountPath: /usr/share/logstash/pipeline
         - name: es-http-ca
           mountPath: /usr/share/logstash/es-http-ca
         env:
+        - name: DD_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: datadog
+              key: api-key
         - name: LS_JAVA_OPTS
-          value: -Dnetworkaddress.cache.ttl=1 -Xms512m -Xmx768m -Dfoo=15
+          value: -Dnetworkaddress.cache.ttl=1 -Xms512m -Xmx768m -Dfoo=25
         - name: XPACK_MONITORING_ELASTICSEARCH_HOSTS
           value: https://platform-log-es-default:9200
         - name: XPACK_MONITORING_ELASTICSEARCH_USERNAME

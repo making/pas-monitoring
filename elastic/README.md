@@ -29,6 +29,9 @@ kubectl get secret -n observability platform-log-es-elastic-user  -o go-template
 ```
 
 ```
+kubectl -n observability create secret generic  datadog  --from-literal=api-key=***********************  --dry-run -o yaml > datadog-secret.yml
+kubectl apply -f datadog-secret.yml 
+
 kubectl create -n observability configmap logstash-pipeline --from-file=pipeline -o yaml --dry-run | kubectl apply -f -
 kubectl apply -f logstash.yml
 ```
